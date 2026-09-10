@@ -1,0 +1,40 @@
+{
+  "name": "suivi-travaux",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "dev": "concurrently -k -n api,web \"npm:dev:server\" \"npm:dev:web\"",
+    "dev:server": "node --experimental-sqlite --watch server/index.mjs",
+    "dev:web": "vite --host 0.0.0.0",
+    "build": "tsc -b && vite build",
+    "start": "node --experimental-sqlite server/index.mjs",
+    "test": "node --experimental-sqlite --test tests/*.test.mjs",
+    "test:e2e": "playwright test",
+    "format": "prettier --write src server tests *.ts *.json *.html *.md"
+  },
+  "dependencies": {
+    "@vercel/blob": "^2.8.0",
+    "archiver": "^7.0.1",
+    "express": "^5.1.0",
+    "lucide-react": "^0.468.0",
+    "multer": "^2.0.2",
+    "mysql2": "^3.24.4",
+    "pg": "^8.23.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.1.2",
+    "prettier": "^3.9.6",
+    "typescript": "~5.7.2",
+    "vite": "^6.0.7"
+  }
+}
