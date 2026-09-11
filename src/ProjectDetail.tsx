@@ -82,10 +82,6 @@ export default function ProjectDetail({
   }
   async function upload(files: FileList | null) {
     if (!files?.length) return;
-    if (files.length > 10) {
-      notify("Ajoutez au maximum 10 fichiers à la fois.", true);
-      return;
-    }
     const selected = Array.from(files);
     if (selected.some((f) => f.size > FILE_UPLOAD_LIMIT)) {
       notify("Chaque fichier doit faire au maximum 20 Mo.", true);
@@ -314,7 +310,7 @@ export default function ProjectDetail({
                     : "Cliquez pour ajouter des fichiers"}
                 </strong>
                 <span>
-                  ou glissez-les ici · 10 fichiers maximum · 20 Mo par fichier
+                  ou glissez-les ici
                 </span>
                 <small>Photos, PDF, documents Office, texte et CSV</small>
               </button>

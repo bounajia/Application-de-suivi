@@ -567,14 +567,14 @@ export async function createApp({ dataDir = process.env.DATA_DIR || path.join(RO
 
   const upload = multer({
     storage: isBlobMode() ? multer.memoryStorage() : multer.diskStorage({ destination: storage.uploadDir, filename: (req, file, done) => done(null, randomBytes(24).toString('hex')) }),
-    limits: { fileSize: (isBlobMode() ? 4.5 : 20) * 1024 * 1024, files: 10, fields: 0 },
+    limits: { fileSize: (isBlobMode() ? 4.5 : 20) * 1024 * 1024, fields: 0 },
     fileFilter: (req, file, done) => {
       const decoded = Buffer.from(file.originalname, 'latin1').toString('utf8');
       if (!decoded.includes('�')) file.originalname = decoded;
       if (!FILE_TYPES[path.extname(file.originalname).toLowerCase()]) return done(fail(400, 'Format non autorisé. Ajoutez une photo, un PDF ou un document bureautique.'));
       done(null, true);
     },
-  }).array('files', 10);
+  }).array('files');
   app.post('/api/projects/:id/attachments', (req, res, next) => {
     upload(req, res, async (error) => {
       const clean = async () => {
@@ -785,7 +785,7 @@ export async function createApp({ dataDir = process.env.DATA_DIR || path.join(RO
     if (res.headersSent) return next(error);
     let status = error.status || 500;
     let message = error.message;
-    if (error instanceof multer.MulterError) { status = 400; message = error.code === 'LIMIT_FILE_SIZE' ? 'Chaque fichier doit faire 4,5 Mo maximum sur Vercel (20 Mo en local).' : 'Ajoutez au maximum 10 fichiers à la fois, dans le champ « files ».'; }
+    if (error instanceof multer.MulterError) { status = 400; message = error.code === 'LIMIT_FILE_SIZE' ? 'Chaque fichier doit faire 4,5 Mo maximum sur Vercel (20 Mo en local).' : 'Impossible de traiter ces fichiers.'; }
     if (error.type === 'entity.parse.failed') { status = 400; message = 'Le corps JSON est invalide.'; }
     if (status >= 500) { console.error(error); message = 'Une erreur interne est survenue. Réessayez.'; }
     res.status(status).json({ error: message });

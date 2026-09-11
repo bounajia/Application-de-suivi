@@ -98,7 +98,7 @@ Le service worker ne met en cache que des ressources publiques : icônes, fichie
 
 Les autorisations sont vérifiées par l'API sur chaque requête, y compris les exports et téléchargements. Tous les comptes validés disposent des mêmes droits dans l'application, quel que soit leur rôle affiché. Les rôles restent des libellés de compte. Un compte ne peut pas désactiver son propre accès. Une suspension invalide les sessions du compte concerné.
 
-Les pièces jointes sont limitées à **20 Mo par fichier et 10 fichiers par envoi**. Formats pris en charge : PDF, JPEG, PNG, WebP, GIF, HEIC/HEIF, texte/CSV, Microsoft Office et OpenDocument. L'extension et certaines signatures de contenu sont vérifiées ; ce contrôle ne constitue pas une analyse antivirus. Le renommage conserve l'extension d'origine.
+Les pièces jointes sont limitées à **20 Mo par fichier**. Formats pris en charge : PDF, JPEG, PNG, WebP, GIF, HEIC/HEIF, texte/CSV, Microsoft Office et OpenDocument. L'extension et certaines signatures de contenu sont vérifiées ; ce contrôle ne constitue pas une analyse antivirus. Le renommage conserve l'extension d'origine.
 
 ### Dates et avancement
 
