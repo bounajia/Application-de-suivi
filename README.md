@@ -13,6 +13,19 @@ npm.cmd run dev
 
 Sur macOS/Linux, utilisez `npm` à la place de `npm.cmd`. Vite affiche l'adresse du site dans le terminal, normalement `http://localhost:5173`. L'interface en développement transmet les requêtes `/api` au serveur local sur le port 3001.
 
+### Utiliser PostgreSQL en local
+
+SQLite reste le mode local par défaut. Pour utiliser PostgreSQL localement, créez une base `suivi`, copiez `.env.example` vers `.env`, puis adaptez l'URL :
+
+```powershell
+createdb suivi
+Copy-Item .env.example .env
+$env:DATABASE_URL = 'postgresql://postgres:postgres@localhost:5432/suivi'
+npm.cmd run dev:postgres
+```
+
+Vous pouvez aussi mettre directement `DATABASE_URL=postgresql://postgres:postgres@localhost:5432/suivi` dans `.env` puis lancer `npm.cmd run dev`. Les tables sont créées automatiquement au démarrage. Pour revenir à SQLite, supprimez ou commentez `DATABASE_URL` dans `.env`.
+
 Au premier lancement, l'écran de configuration permet de créer le premier **administrateur**. Utilisez votre identité et un mot de passe personnel. Aucun compte ou mot de passe partagé n'est préconfiguré. L'interface propose des projets fictifs pour explorer l'application ; ils ne constituent pas des données de chantier réelles.
 
 Après cette configuration, les inscriptions publiques créent une demande en attente. L'administrateur doit l'approuver dans la gestion des utilisateurs avant que le demandeur puisse se connecter. La validation porte sur l'accès à l'application : aucune vérification de possession de l'adresse e-mail n'est effectuée.

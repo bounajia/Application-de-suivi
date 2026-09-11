@@ -1,4 +1,5 @@
-﻿import express from 'express';
+﻿import './env.mjs';
+import express from 'express';
 import multer from 'multer';
 import archiver from 'archiver';
 import { randomBytes, randomUUID, scryptSync, timingSafeEqual, createHash } from 'node:crypto';
@@ -6,7 +7,7 @@ import { mkdirSync, existsSync, unlinkSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { deflateSync, inflateSync } from 'node:zlib';
-import { createStore, pgCount } from './db.mjs';
+import { createStore, databaseEnvStatus, pgCount } from './db.mjs';
 import { createStorage, isBlobMode } from './storage.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -427,7 +428,7 @@ export async function createApp({ dataDir = process.env.DATA_DIR || path.join(RO
     return view;
   };
 
-  app.get('/api/health', (req, res) => res.json({ status: 'ok', db: store.mode, storage: storage.mode }));
+  app.get('/api/health', (req, res) => res.json({ status: 'ok', db: store.mode, storage: storage.mode, env: databaseEnvStatus() }));
   app.get('/api/auth/status', async (req, res) => {
     const row = await store.get('SELECT COUNT(*) AS count FROM users');
     res.json({ needsSetup: pgCount(row) === 0 });

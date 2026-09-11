@@ -50,7 +50,34 @@ const toPg = (sql) => {
 // Normalise ORDER BY rowid (SQLite) pour Postgres/MySQL qui n'ont pas rowid.
 const normalizeOrder = (sql) => sql.replace(/,\s*rowid\s+DESC/gi, ', id DESC').replace(/\browid\b/gi, 'id');
 
-const mysqlUrl = () => process.env.MYSQL_URL || (process.env.DATABASE_URL?.startsWith('mysql://') || process.env.DATABASE_URL?.startsWith('mysql2://') ? process.env.DATABASE_URL : null);
+const databaseUrl = () => process.env.DATABASE_URL || process.env.POSTGRES_URL || process.env.POSTGRES_PRISMA_URL || process.env.POSTGRES_URL_NON_POOLING;
+const mysqlUrl = () => process.env.MYSQL_URL || (databaseUrl()?.startsWith('mysql://') || databaseUrl()?.startsWith('mysql2://') ? databaseUrl() : null);
+const postgresUrl = () => {
+  const url = databaseUrl();
+  return url?.startsWith('postgres://') || url?.startsWith('postgresql://') ? url : null;
+};
+const isLocalPostgres = (url) => {
+  try {
+    const host = new URL(url).hostname;
+    return ['localhost', '127.0.0.1', '::1'].includes(host);
+  } catch {
+    return false;
+  }
+};
+const postgresSsl = (url) => {
+  if (process.env.PGSSL === 'disable' || isLocalPostgres(url)) return false;
+  return { rejectUnauthorized: false };
+};
+
+export function databaseEnvStatus() {
+  return {
+    DATABASE_URL: Boolean(process.env.DATABASE_URL),
+    POSTGRES_URL: Boolean(process.env.POSTGRES_URL),
+    POSTGRES_PRISMA_URL: Boolean(process.env.POSTGRES_PRISMA_URL),
+    POSTGRES_URL_NON_POOLING: Boolean(process.env.POSTGRES_URL_NON_POOLING),
+    MYSQL_URL: Boolean(process.env.MYSQL_URL),
+  };
+}
 
 export async function createStore({ dataDir } = {}) {
   const mysqlConn = mysqlUrl();
@@ -105,11 +132,12 @@ export async function createStore({ dataDir } = {}) {
     };
   }
 
-  if (process.env.DATABASE_URL) {
+  const pgConn = postgresUrl();
+  if (pgConn) {
     const { Pool } = await import('pg');
     const pool = new Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl: process.env.PGSSL === 'disable' ? false : { rejectUnauthorized: false },
+      connectionString: pgConn,
+      ssl: postgresSsl(pgConn),
       max: 5,
     });
     await pool.query(PG_SCHEMA);

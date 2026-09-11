@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "concurrently -k -n api,web \"npm:dev:server\" \"npm:dev:web\"",
     "dev:server": "node --experimental-sqlite --watch server/index.mjs",
+    "dev:postgres": "concurrently -k -n api,web \"npm:dev:server\" \"npm:dev:web\"",
     "dev:web": "vite --host 0.0.0.0",
     "build": "tsc -b && vite build",
     "start": "node --experimental-sqlite server/index.mjs",
