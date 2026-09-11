@@ -30,6 +30,10 @@ import {
   fileSize,
   STATUS,
 } from "./utils";
+import { upload as uploadBlob } from "@vercel/blob/client";
+
+const SERVER_UPLOAD_LIMIT = 4.5 * 1024 * 1024;
+const FILE_UPLOAD_LIMIT = 20 * 1024 * 1024;
 
 export default function ProjectDetail({
   project: p,
@@ -82,16 +86,39 @@ export default function ProjectDetail({
       notify("Ajoutez au maximum 10 fichiers à la fois.", true);
       return;
     }
-    if (Array.from(files).some((f) => f.size > 20 * 1024 * 1024)) {
+    const selected = Array.from(files);
+    if (selected.some((f) => f.size > FILE_UPLOAD_LIMIT)) {
       notify("Chaque fichier doit faire au maximum 20 Mo.", true);
       return;
     }
-    const body = new FormData();
-    Array.from(files).forEach((f) => body.append("files", f));
-    await act(
-      () => api(`/projects/${p.id}/attachments`, { method: "POST", body }),
-      "Pièces jointes ajoutées.",
-    );
+    const directFiles = selected.filter((f) => f.size > SERVER_UPLOAD_LIMIT);
+    const serverFiles = selected.filter((f) => f.size <= SERVER_UPLOAD_LIMIT);
+    await act(async () => {
+      if (serverFiles.length) {
+        const body = new FormData();
+        serverFiles.forEach((f) => body.append("files", f));
+        await api(`/projects/${p.id}/attachments`, { method: "POST", body });
+      }
+      for (const file of directFiles) {
+        const blob = await uploadBlob(`uploads/${file.name}`, file, {
+          access: "private",
+          handleUploadUrl: "/api/blob/upload",
+          clientPayload: JSON.stringify({ projectId: p.id }),
+          multipart: true,
+          contentType: file.type,
+        });
+        await api(`/projects/${p.id}/attachments/blob`, {
+          method: "POST",
+          body: JSON.stringify({
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            url: blob.url,
+            pathname: blob.pathname,
+          }),
+        });
+      }
+    }, "Pièces jointes ajoutées.");
     if (input.current) input.current.value = "";
   }
   async function rename(e: FormEvent<HTMLFormElement>) {

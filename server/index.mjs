@@ -487,6 +487,30 @@ export async function createApp({ dataDir = process.env.DATA_DIR || path.join(RO
   });
 
   app.use('/api', authenticate);
+  app.post('/api/blob/upload', async (req, res, next) => {
+    try {
+      if (!isBlobMode()) throw fail(409, 'Le stockage Blob n’est pas configuré.');
+      const { handleUpload } = await import('@vercel/blob/client');
+      const json = await handleUpload({
+        body: req.body,
+        request: req,
+        onBeforeGenerateToken: async (pathname, clientPayload) => {
+          const payload = JSON.parse(clientPayload || '{}');
+          if (!payload.projectId) throw fail(400, 'Projet manquant.');
+          const row = await store.get('SELECT id FROM projects WHERE id=?', [payload.projectId]);
+          if (!row) throw fail(404, 'Projet introuvable.');
+          safeFilename(pathname.split('/').pop() || pathname);
+          return {
+            allowedContentTypes: Object.values(FILE_TYPES),
+            maximumSizeInBytes: 20 * 1024 * 1024,
+            addRandomSuffix: true,
+            tokenPayload: JSON.stringify({ projectId: payload.projectId, userId: req.user.id }),
+          };
+        },
+      });
+      res.json(json);
+    } catch (e) { next(e); }
+  });
   app.get('/api/events', (req, res) => {
     if (process.env.VERCEL || process.env.DISABLE_SSE === '1') return res.status(204).end();
     res.setHeader('Content-Type', 'text/event-stream');
@@ -580,6 +604,29 @@ export async function createApp({ dataDir = process.env.DATA_DIR || path.join(RO
         res.status(201).json({ attachments, project: await getProject(req) });
       } catch (caught) { await clean(); next(caught); }
     });
+  });
+  app.post('/api/projects/:id/attachments/blob', async (req, res, next) => {
+    try {
+      if (!isBlobMode()) throw fail(409, 'Le stockage Blob n’est pas configuré.');
+      const project = await getProject(req);
+      const blob = req.body || {};
+      const name = safeFilename(blob.name || blob.pathname?.split('/').pop() || '');
+      const ext = path.extname(name).toLowerCase();
+      const expectedMime = FILE_TYPES[ext];
+      if (!expectedMime) throw fail(400, 'Format non autorisé. Ajoutez une photo, un PDF ou un document bureautique.');
+      const size = Number(blob.size);
+      if (!Number.isFinite(size) || size <= 0 || size > 20 * 1024 * 1024) throw fail(400, 'Chaque fichier doit faire au maximum 20 Mo.');
+      if (typeof blob.url !== 'string' || !/^https:\/\/[^/]+\.blob\.vercel-storage\.com\//.test(blob.url)) throw fail(400, 'Fichier Blob invalide.');
+      const attachments = await transaction(async (tx) => {
+        const id = randomUUID();
+        await tx.run('INSERT INTO attachments VALUES (?,?,?,?,?,?,?,?,?,?)', [id, project.id, name, name, blob.url, expectedMime, size, req.user.id, req.user.name, now()]);
+        await audit(tx, req.user, 'Pièce jointe ajoutée', project, [{ field: 'attachment', before: null, after: name }]);
+        await stampProject(tx, project.id, req.user);
+        return [attachmentView(await tx.get('SELECT * FROM attachments WHERE id=?', [id]))];
+      });
+      broadcast();
+      res.status(201).json({ attachments, project: await getProject(req) });
+    } catch (e) { next(e); }
   });
   const getAttachment = async (req) => {
     const project = await getProject(req);
