@@ -5,11 +5,18 @@ export function isBlobMode() {
   return Boolean(process.env.BLOB_READ_WRITE_TOKEN);
 }
 
+export function blobAccessMode() {
+  return process.env.BLOB_ACCESS === 'public' ? 'public' : 'private';
+}
+
 export function createStorage({ dataDir }) {
   const uploadDir = path.join(path.resolve(dataDir), 'uploads');
   if (!isBlobMode()) mkdirSync(uploadDir, { recursive: true });
 
   const localPath = (storageName) => path.join(uploadDir, storageName);
+  const blobFetchHeaders = () => blobAccessMode() === 'private'
+    ? { Authorization: `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}` }
+    : undefined;
 
   return {
     mode: isBlobMode() ? 'blob' : 'local',
@@ -19,7 +26,7 @@ export function createStorage({ dataDir }) {
     async saveBuffer({ buffer, pathname, contentType }) {
       if (isBlobMode()) {
         const { put } = await import('@vercel/blob');
-        const blob = await put(pathname, buffer, { access: 'public', contentType, addRandomSuffix: true });
+        const blob = await put(pathname, buffer, { access: blobAccessMode(), contentType, addRandomSuffix: true });
         return blob.url;
       }
       const name = pathname.split('/').pop();
@@ -34,7 +41,7 @@ export function createStorage({ dataDir }) {
       if (isBlobMode()) {
         const { put } = await import('@vercel/blob');
         const safe = `${Date.now()}-${Math.random().toString(36).slice(2)}-${file.originalname}`;
-        const blob = await put(`uploads/${safe}`, data, { access: 'public', contentType: file.mimetype, addRandomSuffix: true });
+        const blob = await put(`uploads/${safe}`, data, { access: blobAccessMode(), contentType: file.mimetype, addRandomSuffix: true });
         if (file.path) { try { unlinkSync(file.path); } catch {} }
         return blob.url;
       }
@@ -47,7 +54,7 @@ export function createStorage({ dataDir }) {
 
     async readBytes(storageName) {
       if (isBlobMode() && /^https?:\/\//.test(storageName)) {
-        const res = await fetch(storageName);
+        const res = await fetch(storageName, { headers: blobFetchHeaders() });
         if (!res.ok) throw new Error('Fichier distant indisponible.');
         return Buffer.from(await res.arrayBuffer());
       }
@@ -57,7 +64,7 @@ export function createStorage({ dataDir }) {
     async exists(storageName) {
       if (isBlobMode() && /^https?:\/\//.test(storageName)) {
         try {
-          const res = await fetch(storageName, { method: 'HEAD' });
+          const res = await fetch(storageName, { method: 'HEAD', headers: blobFetchHeaders() });
           return res.ok;
         } catch { return false; }
       }

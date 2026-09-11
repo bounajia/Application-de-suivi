@@ -8,7 +8,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { deflateSync, inflateSync } from 'node:zlib';
 import { createStore, databaseEnvStatus, pgCount } from './db.mjs';
-import { createStorage, isBlobMode } from './storage.mjs';
+import { blobAccessMode, createStorage, isBlobMode } from './storage.mjs';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const SESSION_MS = 7 * 24 * 60 * 60 * 1000;
@@ -428,7 +428,7 @@ export async function createApp({ dataDir = process.env.DATA_DIR || path.join(RO
     return view;
   };
 
-  app.get('/api/health', (req, res) => res.json({ status: 'ok', db: store.mode, storage: storage.mode, env: databaseEnvStatus() }));
+  app.get('/api/health', (req, res) => res.json({ status: 'ok', db: store.mode, storage: storage.mode, storageAccess: isBlobMode() ? blobAccessMode() : 'local', env: databaseEnvStatus() }));
   app.get('/api/auth/status', async (req, res) => {
     const row = await store.get('SELECT COUNT(*) AS count FROM users');
     res.json({ needsSetup: pgCount(row) === 0 });
