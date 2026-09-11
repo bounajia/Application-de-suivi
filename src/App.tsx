@@ -530,6 +530,11 @@ export default function App() {
                 await refresh();
                 notify("Les droits d’accès ont été mis à jour.");
               }}
+              onDelete={async (id) => {
+                await api(`/users/${id}`, { method: "DELETE" });
+                await refresh();
+                notify("Le compte a été supprimé.");
+              }}
             />
           ) : page === "activity" ? (
             <>

@@ -427,6 +427,17 @@ test('suspension and role changes invalidate sessions without role hierarchy', a
   assert.equal(f.db.prepare("SELECT COUNT(*) AS count FROM users WHERE role='admin' AND status='active'").get().count, 2);
 });
 
+test('admins can delete other accounts and invalidate their sessions', async (t) => {
+  const f = await fixture(t);
+  const admin = await f.activeUser('Nadia Administratrice', 'nadia-delete@example.test', 'admin');
+  const member = await f.activeUser('Membre à supprimer', 'delete-me@example.test');
+  assert.equal((await f.request(`/users/${member.user.id}`, { method: 'DELETE', cookie: admin.cookie })).status, 200);
+  assert.equal((await f.request('/auth/me', { cookie: member.cookie })).status, 401);
+  const users = (await f.request('/users', { cookie: admin.cookie })).data.users;
+  assert.ok(!users.some((u) => u.id === member.user.id));
+  assert.equal((await f.request(`/users/${admin.user.id}`, { method: 'DELETE', cookie: admin.cookie })).status, 400);
+});
+
 test('private API responses prevent caching and reject cross-origin mutations', async (t) => {
   const f = await fixture(t);
   const result = await f.request('/projects', { cookie: f.ownerCookie });

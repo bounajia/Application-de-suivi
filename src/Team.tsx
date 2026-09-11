@@ -1,5 +1,13 @@
 import { useState } from "react";
-import { Check, Search, ShieldCheck, UserCheck, Users, X } from "lucide-react";
+import {
+  Check,
+  Search,
+  ShieldCheck,
+  Trash2,
+  UserCheck,
+  Users,
+  X,
+} from "lucide-react";
 import { Avatar, Empty, Modal } from "./components";
 import type { User } from "./types";
 import { ACCOUNT_STATUS, dateLabel, ROLES } from "./utils";
@@ -8,10 +16,12 @@ export default function Team({
   users,
   currentUser,
   onUpdate,
+  onDelete,
 }: {
   users: User[];
   currentUser: User;
   onUpdate: (id: string, data: Partial<User>) => Promise<void>;
+  onDelete: (id: string) => Promise<void>;
 }) {
   const [tab, setTab] = useState("all");
   const [query, setQuery] = useState("");
@@ -22,6 +32,7 @@ export default function Team({
     data: Partial<User>;
     title: string;
   } | null>(null);
+  const [deleting, setDeleting] = useState<User | null>(null);
   const pending = users.filter((u) => u.status === "pending");
   const visible = users.filter(
     (u) =>
@@ -35,6 +46,19 @@ export default function Team({
     try {
       await onUpdate(confirm.user.id, confirm.data);
       setConfirm(null);
+    } catch (e) {
+      setError((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function deleteAccount() {
+    if (!deleting) return;
+    setBusy(true);
+    setError("");
+    try {
+      await onDelete(deleting.id);
+      setDeleting(null);
     } catch (e) {
       setError((e as Error).message);
     } finally {
@@ -230,6 +254,19 @@ export default function Team({
                                   : "Activer"}
                               </button>
                             ))}
+                          {canManage && (
+                            <button
+                              className="icon-button delete-button"
+                              disabled={busy}
+                              aria-label={`Supprimer ${u.name}`}
+                              onClick={() => {
+                                setError("");
+                                setDeleting(u);
+                              }}
+                            >
+                              <Trash2 size={15} />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -286,6 +323,46 @@ export default function Team({
             </button>
             <button className="button primary" disabled={busy} onClick={update}>
               {busy ? "Enregistrement…" : "Confirmer"}
+            </button>
+          </div>
+        </Modal>
+      )}
+      {deleting && (
+        <Modal
+          title="Supprimer ce compte ?"
+          onClose={() => setDeleting(null)}
+        >
+          <div className="modal-body">
+            <div className="user-chip">
+              <Avatar name={deleting.name} />
+              <div className="user-info">
+                <strong>{deleting.name}</strong>
+                <span>{deleting.email}</span>
+              </div>
+            </div>
+            <p>
+              Ce compte sera supprimé et ses sessions seront fermées. Les
+              projets et l’historique déjà enregistrés seront conservés.
+            </p>
+            {error && (
+              <p className="form-error" role="alert">
+                {error}
+              </p>
+            )}
+          </div>
+          <div className="modal-footer">
+            <button
+              className="button secondary"
+              onClick={() => setDeleting(null)}
+            >
+              Annuler
+            </button>
+            <button
+              className="button danger"
+              disabled={busy}
+              onClick={deleteAccount}
+            >
+              {busy ? "Suppression…" : "Supprimer"}
             </button>
           </div>
         </Modal>

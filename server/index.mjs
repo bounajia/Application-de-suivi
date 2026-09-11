@@ -760,6 +760,18 @@ export async function createApp({ dataDir = process.env.DATA_DIR || path.join(RO
     if (changes.length) broadcast();
     res.json({ user: userView(await store.get('SELECT * FROM users WHERE id=?', [previous.id])) });
   });
+  app.delete('/api/users/:id', accountAdminOnly, async (req, res) => {
+    const previous = userView(await store.get('SELECT * FROM users WHERE id=?', [req.params.id]));
+    if (!previous) throw fail(404, 'Compte introuvable.');
+    if (req.user.id === previous.id) throw fail(400, 'Vous ne pouvez pas supprimer votre propre compte.');
+    await transaction(async (tx) => {
+      await audit(tx, req.user, `Compte supprimé : ${previous.name}`, null, [{ field: 'account', before: previous.email, after: null }]);
+      await tx.run('DELETE FROM sessions WHERE user_id=?', [previous.id]);
+      await tx.run('DELETE FROM users WHERE id=?', [previous.id]);
+    });
+    broadcast();
+    res.json({ success: true });
+  });
   app.use('/api', (req, res) => res.status(404).json({ error: 'Route API introuvable.' }));
   if (existsSync(staticDir)) {
     app.use(express.static(staticDir, { index: false, setHeaders: (res, filename) => { if (/service-worker|sw\.js|manifest/.test(filename)) res.setHeader('Cache-Control', 'no-cache'); } }));
